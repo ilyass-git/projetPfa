@@ -1,0 +1,365 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-light mb-4">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">GeoTracker</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#" data-tab="simulation">Simulation</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" data-tab="administration">Administration</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Notifications -->
+    <div id="notifications" class="position-fixed top-0 end-0 p-3" style="z-index: 1050">
+        {% for notification in notifications %}
+        <div class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="toast-header">
+                <strong class="me-auto">Alerte</strong>
+                <small>{{ notification.date_creation|timesince }}</small>
+                <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+            <div class="toast-body">
+                {{ notification.message }}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Contenu principal -->
+    <div class="row">
+        <!-- Onglet Simulation -->
+        <div id="simulation" class="tab-content active">
+            <div class="row">
+                <!-- Liste des étudiants -->
+                <div class="col-md-3">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Étudiants</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="list-group" id="studentList">
+                                {% for etudiant in etudiants %}
+                                <div class="list-group-item list-group-item-action d-flex justify-content-between align-items-center student-item" 
+                                     data-student-id="{{ etudiant.id }}"
+                                     draggable="true">
+                                    <div>
+                                        <h6 class="mb-0">{{ etudiant.prenom }} {{ etudiant.nom }}</h6>
+                                        <small class="text-muted">{{ etudiant.groupe }}</small>
+                                    </div>
+                                    <span class="badge bg-primary rounded-pill">
+                                        <i class="fas fa-map-marker-alt"></i>
+                                    </span>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Carte -->
+                <div class="col-md-9">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Carte de l'école</h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="map" style="height: 600px;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Onglet Administration -->
+        <div id="administration" class="tab-content">
+            <div class="row">
+                <!-- Formulaire d'ajout d'étudiant -->
+                <div class="col-md-4">
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Ajouter un étudiant</h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="post" action="{% url 'ajouter_etudiant' %}">
+                                {% csrf_token %}
+                                <div class="mb-3">
+                                    <label for="nom" class="form-label">Nom</label>
+                                    <input type="text" class="form-control" id="nom" name="nom" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="prenom" class="form-label">Prénom</label>
+                                    <input type="text" class="form-control" id="prenom" name="prenom" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="identifiant" class="form-label">Identifiant</label>
+                                    <input type="text" class="form-control" id="identifiant" name="identifiant" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="annee_scolaire" class="form-label">Année scolaire</label>
+                                    <input type="text" class="form-control" id="annee_scolaire" name="annee_scolaire" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="groupe" class="form-label">Groupe</label>
+                                    <input type="text" class="form-control" id="groupe" name="groupe" required>
+                                </div>
+                                <button type="submit" class="btn btn-primary">Ajouter</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Liste des étudiants -->
+                <div class="col-md-8">
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Liste des étudiants</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>Nom</th>
+                                            <th>Prénom</th>
+                                            <th>Identifiant</th>
+                                            <th>Année</th>
+                                            <th>Groupe</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for etudiant in etudiants %}
+                                        <tr>
+                                            <td>{{ etudiant.nom }}</td>
+                                            <td>{{ etudiant.prenom }}</td>
+                                            <td>{{ etudiant.identifiant }}</td>
+                                            <td>{{ etudiant.annee_scolaire }}</td>
+                                            <td>{{ etudiant.groupe }}</td>
+                                            <td>
+                                                <button class="btn btn-sm btn-info" onclick="editStudent('{{ etudiant.id }}')">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                <button class="btn btn-sm btn-danger" onclick="deleteStudent('{{ etudiant.id }}')">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Zones rouges -->
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="card-title mb-0">Zones rouges</h5>
+                            <a href="{% url 'ajouter_zone_rouge' %}" class="btn btn-primary btn-sm">
+                                <i class="fas fa-plus"></i> Ajouter une zone
+                            </a>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>Nom</th>
+                                            <th>Description</th>
+                                            <th>Date début</th>
+                                            <th>Date fin</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for zone in zones_rouges %}
+                                        <tr>
+                                            <td>{{ zone.nom }}</td>
+                                            <td>{{ zone.description }}</td>
+                                            <td>{{ zone.date_debut }}</td>
+                                            <td>{{ zone.date_fin }}</td>
+                                            <td>
+                                                <button class="btn btn-sm btn-info" onclick="editZone('{{ zone.id }}')">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                <button class="btn btn-sm btn-danger" onclick="deleteZone('{{ zone.id }}')">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+<script>
+    // Initialisation de la carte
+    var map = L.map('map').setView([0, 0], 2);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+
+    // Gestion des onglets
+    document.querySelectorAll('[data-tab]').forEach(tab => {
+        tab.addEventListener('click', (e) => {
+            e.preventDefault();
+            const tabId = e.target.dataset.tab;
+            
+            // Mise à jour des classes active
+            document.querySelectorAll('[data-tab]').forEach(t => t.classList.remove('active'));
+            e.target.classList.add('active');
+            
+            // Affichage du contenu
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.getElementById(tabId).classList.add('active');
+        });
+    });
+
+    // Gestion du drag & drop
+    const studentItems = document.querySelectorAll('.student-item');
+    let draggedStudent = null;
+
+    studentItems.forEach(item => {
+        item.addEventListener('dragstart', (e) => {
+            draggedStudent = item;
+            item.classList.add('dragging');
+        });
+
+        item.addEventListener('dragend', () => {
+            item.classList.remove('dragging');
+        });
+    });
+
+    map.on('dragover', (e) => {
+        e.preventDefault();
+    });
+
+    map.on('drop', (e) => {
+        e.preventDefault();
+        if (draggedStudent) {
+            const studentId = draggedStudent.dataset.studentId;
+            const lat = e.latlng.lat;
+            const lng = e.latlng.lng;
+            
+            // Mise à jour de la position
+            updatePosition(studentId, lat, lng);
+            
+            // Ajout du marqueur sur la carte
+            const marker = L.marker([lat, lng]).addTo(map);
+            marker.bindPopup(`${draggedStudent.querySelector('h6').textContent}`);
+        }
+    });
+
+    // Fonction pour mettre à jour la position
+    function updatePosition(etudiantId, lat, lng) {
+        fetch('{% url "update_position" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                etudiant_id: etudiantId,
+                latitude: lat,
+                longitude: lng
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                showToast('Position mise à jour avec succès');
+            }
+        });
+    }
+
+    // Fonction pour récupérer le token CSRF
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    // Fonctions pour la gestion des étudiants
+    function editStudent(id) {
+        // À implémenter
+        console.log('Édition de l\'étudiant:', id);
+    }
+
+    function deleteStudent(id) {
+        Swal.fire({
+            title: 'Êtes-vous sûr ?',
+            text: "Cette action est irréversible !",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Oui, supprimer',
+            cancelButtonText: 'Annuler'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // À implémenter
+                console.log('Suppression de l\'étudiant:', id);
+            }
+        });
+    }
+
+    // Fonctions pour la gestion des zones
+    function editZone(id) {
+        // À implémenter
+        console.log('Édition de la zone:', id);
+    }
+
+    function deleteZone(id) {
+        Swal.fire({
+            title: 'Êtes-vous sûr ?',
+            text: "Cette action est irréversible !",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Oui, supprimer',
+            cancelButtonText: 'Annuler'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // À implémenter
+                console.log('Suppression de la zone:', id);
+            }
+        });
+    }
+</script>
+{% endblock %}
+{% endblock %} 

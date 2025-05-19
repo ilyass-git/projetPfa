@@ -1,0 +1,141 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Ajouter une balise BLE virtuelle</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="baliseForm">
+                        {% csrf_token %}
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="identifiant" class="form-label">Identifiant de la balise (UUID)</label>
+                                    <input type="text" class="form-control" id="identifiant" name="identifiant" required>
+                                    <small class="text-muted">Format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</small>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="nom" class="form-label">Nom de la balise</label>
+                                    <input type="text" class="form-control" id="nom" name="nom" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="type_zone" class="form-label">Type de zone</label>
+                                    <select class="form-select" id="type_zone" name="type_zone" required>
+                                        <option value="salle">Salle de classe</option>
+                                        <option value="couloir">Couloir</option>
+                                        <option value="entree">Entrée</option>
+                                        <option value="autre">Autre</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="puissance_emission" class="form-label">Puissance d'émission (dBm)</label>
+                                    <input type="number" class="form-control" id="puissance_emission" name="puissance_emission" value="-59" required>
+                                    <small class="text-muted">Valeur par défaut : -59 dBm (1m)</small>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="rayon_couverture" class="form-label">Rayon de couverture (mètres)</label>
+                                    <input type="number" class="form-control" id="rayon_couverture" name="rayon_couverture" value="10" required>
+                                    <small class="text-muted">Distance maximale de détection</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Position de la balise</label>
+                                    <div id="map" style="height: 400px;"></div>
+                                    <small class="text-muted">Cliquez sur la carte pour définir la position de la balise</small>
+                                </div>
+                                <div id="zone_couverture" class="mb-3" style="display: none;">
+                                    <div class="alert alert-info">
+                                        <i class="fas fa-info-circle"></i>
+                                        <span id="zone_info">Zone de couverture : </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <input type="hidden" name="latitude" id="latitude">
+                        <input type="hidden" name="longitude" id="longitude">
+                        <div class="text-end">
+                            <a href="{% url 'dashboard' %}" class="btn btn-secondary">Annuler</a>
+                            <button type="submit" class="btn btn-primary">Ajouter la balise</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+<script>
+    // Initialisation de la carte
+    var map = L.map('map').setView([0, 0], 2);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+
+    var marker = null;
+    var circle = null;
+
+    // Gestionnaire de clic sur la carte
+    map.on('click', function(e) {
+        if (marker) {
+            map.removeLayer(marker);
+        }
+        if (circle) {
+            map.removeLayer(circle);
+        }
+        
+        marker = L.marker(e.latlng).addTo(map);
+        
+        // Ajouter le cercle de couverture
+        var rayon = parseFloat(document.getElementById('rayon_couverture').value);
+        circle = L.circle(e.latlng, {
+            radius: rayon,
+            color: 'red',
+            fillColor: '#f03',
+            fillOpacity: 0.2
+        }).addTo(map);
+        
+        // Mise à jour des champs cachés
+        document.getElementById('latitude').value = e.latlng.lat;
+        document.getElementById('longitude').value = e.latlng.lng;
+        
+        // Afficher la zone de couverture
+        document.getElementById('zone_couverture').style.display = 'block';
+        document.getElementById('zone_info').textContent = 
+            `Zone de couverture : ${rayon} mètres`;
+    });
+
+    // Mise à jour du rayon de couverture
+    document.getElementById('rayon_couverture').addEventListener('change', function(e) {
+        if (marker && circle) {
+            var rayon = parseFloat(e.target.value);
+            map.removeLayer(circle);
+            circle = L.circle(marker.getLatLng(), {
+                radius: rayon,
+                color: 'red',
+                fillColor: '#f03',
+                fillOpacity: 0.2
+            }).addTo(map);
+            
+            document.getElementById('zone_info').textContent = 
+                `Zone de couverture : ${rayon} mètres`;
+        }
+    });
+
+    // Validation du formulaire
+    document.getElementById('baliseForm').addEventListener('submit', function(e) {
+        if (!marker) {
+            e.preventDefault();
+            alert('Veuillez définir la position de la balise sur la carte');
+        }
+    });
+</script>
+{% endblock %} 

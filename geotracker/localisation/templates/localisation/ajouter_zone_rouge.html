@@ -1,0 +1,100 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Ajouter une zone rouge</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="zoneForm">
+                        {% csrf_token %}
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="nom" class="form-label">Nom de la zone</label>
+                                    <input type="text" class="form-control" id="nom" name="nom" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="description" class="form-label">Description</label>
+                                    <textarea class="form-control" id="description" name="description" rows="3" required></textarea>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="date_debut" class="form-label">Date de début</label>
+                                    <input type="date" class="form-control" id="date_debut" name="date_debut" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="date_fin" class="form-label">Date de fin</label>
+                                    <input type="date" class="form-control" id="date_fin" name="date_fin" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Dessiner la zone sur la carte</label>
+                                    <div id="map" style="height: 400px;"></div>
+                                    <small class="text-muted">Cliquez sur la carte pour ajouter des points à la zone</small>
+                                </div>
+                            </div>
+                        </div>
+                        <input type="hidden" name="points" id="points">
+                        <div class="text-end">
+                            <a href="{% url 'dashboard' %}" class="btn btn-secondary">Annuler</a>
+                            <button type="submit" class="btn btn-primary">Créer la zone</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+<script>
+    // Initialisation de la carte
+    var map = L.map('map').setView([0, 0], 2);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+
+    // Variables pour le dessin de la zone
+    var points = [];
+    var polygon = null;
+
+    // Gestionnaire de clic sur la carte
+    map.on('click', function(e) {
+        points.push({
+            lat: e.latlng.lat,
+            lng: e.latlng.lng
+        });
+
+        // Mise à jour du polygone
+        if (polygon) {
+            map.removeLayer(polygon);
+        }
+
+        if (points.length >= 3) {
+            polygon = L.polygon(points.map(p => [p.lat, p.lng]), {
+                color: 'red',
+                fillColor: '#f03',
+                fillOpacity: 0.3
+            }).addTo(map);
+        }
+
+        // Mise à jour du champ caché
+        document.getElementById('points').value = JSON.stringify(points);
+    });
+
+    // Validation du formulaire
+    document.getElementById('zoneForm').addEventListener('submit', function(e) {
+        if (points.length < 3) {
+            e.preventDefault();
+            alert('Veuillez dessiner une zone avec au moins 3 points sur la carte');
+        }
+    });
+</script>
+{% endblock %} 
